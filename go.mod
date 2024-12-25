@@ -1,3 +1,3 @@
-module tyler-cako/go-compiler
+module go-compiler
 
 go 1.23.4
