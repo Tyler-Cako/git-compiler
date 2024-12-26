@@ -26,6 +26,8 @@ if (5 < 10) {
 
 10 == 10;
 10 != 9;
+
+let test!t😁e = 3
 `
 
 	tests := []struct {
@@ -105,6 +107,12 @@ if (5 < 10) {
 		{token.NOT_EQ, "!="},
 		{token.INT, "9"},
 		{token.SEMICOLON, ";"},
+
+		{token.LET, "let"},
+		{token.IDENT, "test!t😁e"},
+		{token.ASSIGN, "="},
+		{token.INT, "3"},
+
 		{token.EOF, ""},
 	}
 
@@ -118,7 +126,7 @@ if (5 < 10) {
 				i, tt.expectedType, tok.Type)
 		}
 
-		if tok.Literal != tt.expectedLiteral {
+		if string(tok.Literal) != string(tt.expectedLiteral) {
 			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
 				i, tt.expectedLiteral, tok.Literal)
 		}

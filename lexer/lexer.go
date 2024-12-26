@@ -1,28 +1,33 @@
 package lexer
 
-import "go-compiler/token"
+import (
+	"go-compiler/token"
+)
 
 type Lexer struct {
-	input        string
+	input        []rune
 	position     int  // current position in input (points to current char)
 	readPosition int  // current reading position in input (after current char)
-	ch           byte // current char under examination
+	ch           rune // current char under examination
 }
 
+type IsToken func(ch rune) bool
+
 func New(input string) *Lexer {
-	l := &Lexer{input: input}
+	l := &Lexer{input: []rune(input)}
 	l.readChar()
 	return l
 }
 
-func (l *Lexer) readChar() {
-	if l.readPosition >= len(l.input) {
-		l.ch = 0
-	} else {
-		l.ch = l.input[l.readPosition]
-	}
-	l.position = l.readPosition
-	l.readPosition += 1
+func newToken(tokenType token.TokenType, ch rune) token.Token {
+	return token.Token{Type: tokenType, Literal: string(ch)}
+}
+
+func (l *Lexer) makeTwoCharToken(tokenType token.TokenType) token.Token {
+	ch := l.ch
+	l.readChar()
+	literal := []rune{ch, l.ch}
+	return token.Token{Type: tokenType, Literal: string(literal)}
 }
 
 func (l *Lexer) NextToken() token.Token {
@@ -33,10 +38,7 @@ func (l *Lexer) NextToken() token.Token {
 	switch l.ch {
 	case '=':
 		if l.peekChar() == '=' {
-			ch := l.ch
-			l.readChar()
-			literal := string(ch) + string(l.ch)
-			tok = token.Token{Type: token.EQ, Literal: literal}
+			tok = l.makeTwoCharToken(token.EQ)
 		} else {
 			tok = newToken(token.ASSIGN, l.ch)
 		}
@@ -46,10 +48,7 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.MINUS, l.ch)
 	case '!':
 		if l.peekChar() == '=' {
-			ch := l.ch
-			l.readChar()
-			literal := string(ch) + string(l.ch)
-			tok = token.Token{Type: token.NOT_EQ, Literal: literal}
+			tok = l.makeTwoCharToken(token.NOT_EQ)
 		} else {
 			tok = newToken(token.BANG, l.ch)
 		}
@@ -78,12 +77,12 @@ func (l *Lexer) NextToken() token.Token {
 		tok.Type = token.EOF
 	default:
 		if isLetter(l.ch) {
-			tok.Literal = l.readIdentifier()
+			tok.Literal = l.readToken(isLetter)
 			tok.Type = token.LookupIdent(tok.Literal)
 			return tok
 		} else if isDigit(l.ch) {
 			tok.Type = token.INT
-			tok.Literal = l.readNumber()
+			tok.Literal = l.readToken(isDigit)
 			return tok
 		} else {
 			tok = newToken(token.ILLEGAL, l.ch)
@@ -94,20 +93,30 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
-func newToken(tokenType token.TokenType, ch byte) token.Token {
-	return token.Token{Type: tokenType, Literal: string(ch)}
+func (l *Lexer) readChar() {
+	if l.readPosition >= len(l.input) {
+		l.ch = 0
+	} else {
+		l.ch = l.input[l.readPosition]
+	}
+	l.position = l.readPosition
+	l.readPosition += 1
 }
 
-func (l *Lexer) readIdentifier() string {
+func (l *Lexer) readToken(isToken IsToken) string {
 	position := l.position
-	for isLetter(l.ch) {
+	for isToken(l.ch) {
 		l.readChar()
 	}
-	return l.input[position:l.position]
+	return string(l.input[position:l.position])
 }
 
-func isLetter(ch byte) bool {
-	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
+func (l *Lexer) peekChar() rune {
+	if l.readPosition >= len(l.input) {
+		return 0
+	} else {
+		return l.input[l.readPosition]
+	}
 }
 
 func (l *Lexer) skipWhitespace() {
@@ -116,22 +125,10 @@ func (l *Lexer) skipWhitespace() {
 	}
 }
 
-func (l *Lexer) readNumber() string {
-	position := l.position
-	for isDigit(l.ch) {
-		l.readChar()
-	}
-	return l.input[position:l.position]
-}
-
-func isDigit(ch byte) bool {
+func isDigit(ch rune) bool {
 	return '0' <= ch && ch <= '9'
 }
 
-func (l *Lexer) peekChar() byte {
-	if l.readPosition >= len(l.input) {
-		return 0
-	} else {
-		return l.input[l.readPosition]
-	}
+func isLetter(ch rune) bool {
+	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || ch == '!' || (ch >= '😁' && ch <= '🙏')
 }
